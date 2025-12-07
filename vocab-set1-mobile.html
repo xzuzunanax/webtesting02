@@ -6,13 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text"; }
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   body {
     margin: 0;
     padding: 16px;
     background: #f5f5f5;
     display: flex;
     justify-content: center;
+    /* 避免 iOS 點擊高亮 */
+    -webkit-tap-highlight-color: transparent;
   }
 
   .app {
@@ -26,8 +28,15 @@
 
   h1 { text-align: center; margin-bottom: 8px; }
   .subtitle { text-align: center; font-size: 13px; color: #666; margin-bottom: 12px; }
+  .ios-hint { 
+    text-align: center; 
+    font-size: 12px; 
+    color: #e74c3c; 
+    margin-bottom: 10px; 
+    display: none; /* 預設隱藏，JS 偵測到 iOS 才顯示 */
+  }
 
-  /* 語速按鈕（手機大尺寸） */
+  /* 語速按鈕 */
   .speed-controls {
     display: flex;
     justify-content: center;
@@ -89,6 +98,8 @@
   .jp-word-front {
     font-size: 48px;
     margin-bottom: 6px;
+    /* 增加點擊區域提示 */
+    border-bottom: 2px dashed #ddd; 
   }
   .front-hint {
     font-size: 13px;
@@ -103,6 +114,7 @@
     font-size: 26px;
     cursor: pointer;
     z-index: 10;
+    padding: 10px; /* 增加手指觸控範圍 */
   }
 
   /* table */
@@ -113,22 +125,23 @@
   }
   th {
     text-align: left;
-    width: 110px;
+    width: 90px;
     color: #888;
     padding: 6px 4px;
+    vertical-align: top;
   }
   td {
     color: #222;
     padding: 6px 4px;
   }
 
-  /* 大一點的🔊 */
   .audio-btn {
     background: none;
     border: none;
     font-size: 24px;
     cursor: pointer;
     margin-left: 6px;
+    vertical-align: middle;
   }
 
   /* 按鈕 */
@@ -144,7 +157,10 @@
     border-radius: 999px;
     border: none;
     background: #eee;
+    cursor: pointer;
   }
+  button.nav:active { background: #ddd; }
+  button.nav:disabled { opacity: 0.5; }
 
   .index {
     text-align: center;
@@ -159,7 +175,9 @@
 <div class="app">
 
 <h1>第一組詞彙（手機版）</h1>
-<div class="subtitle">點擊卡片反轉｜點字或🔊播放語音｜手機專用</div>
+<div class="subtitle">點擊卡片反轉｜點字或🔊播放語音</div>
+<!-- 針對 iPhone 用戶的提示 -->
+<div class="ios-hint" id="iosHint">⚠️ iPhone 用戶請注意：請解除「靜音模式」(撥開側邊開關)，否則會沒有聲音。</div>
 
 <!-- 語速 -->
 <div class="speed-controls">
@@ -177,7 +195,7 @@
     <!-- 正面 -->
     <div class="card-face card-front">
       <div class="jp-word-front" id="jpWordFront"></div>
-      <div class="front-hint">（點我播放讀音）</div>
+      <div class="front-hint">（點字播放讀音）</div>
     </div>
 
     <!-- 背面 -->
@@ -188,7 +206,7 @@
         <tr><th>中文</th><td id="cnBack"></td></tr>
 
         <tr>
-          <th>漢字假名例句</th>
+          <th>漢字例句</th>
           <td>
             <span id="exampleJpAlt"></span>
             <button class="audio-btn" id="audioSentenceAltBtn">🔊</button>
@@ -273,24 +291,61 @@ const exampleJpBack = document.getElementById("exampleJpBack");
 const exampleJpAlt = document.getElementById("exampleJpAlt");
 const exampleCnBack = document.getElementById("exampleCnBack");
 const grammarBack = document.getElementById("grammarBack");
-
 const audioSentenceBtn = document.getElementById("audioSentenceBtn");
 const audioSentenceAltBtn = document.getElementById("audioSentenceAltBtn");
-
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 const indexInfo = document.getElementById("indexInfo");
+const iosHint = document.getElementById("iosHint");
 
 let idx = 0;
 let speechRate = 1.0;
 let hardSet = new Set();
+let voices = [];
 
-/* --- Speech Function --- */
+/* --- Detect iOS for hint --- */
+function isIOS() {
+  return [
+    'iPad Simulator', 'iPhone Simulator', 'iPod Simulator', 'iPad', 'iPhone', 'iPod'
+  ].includes(navigator.platform) || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+}
+if (isIOS()) {
+  iosHint.style.display = "block";
+}
+
+/* --- Speech Function Fix --- */
+// 1. 預先載入語音列表 (Android/Chrome 需要)
+function loadVoices() {
+  voices = window.speechSynthesis.getVoices();
+}
+loadVoices();
+if (window.speechSynthesis.onvoiceschanged !== undefined) {
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
 function speak(text){
+  // 2. 重要：手機端必須先 Cancel 掉前一個，否則隊列會卡死
+  window.speechSynthesis.cancel();
+
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP";
+  u.lang = "ja-JP"; // 設定語言
   u.rate = speechRate;
-  speechSynthesis.speak(u);
+
+  // 3. 嘗試強制指定日文語音 (解決部分手機預設為英文的問題)
+  // 優先找 ja-JP，其次找任何包含 ja 的語音
+  if (voices.length > 0) {
+    const jaVoice = voices.find(v => v.lang === 'ja-JP') || voices.find(v => v.lang.includes('ja'));
+    if (jaVoice) {
+      u.voice = jaVoice;
+    }
+  }
+
+  // 4. 錯誤處理
+  u.onerror = (e) => {
+    console.error("Speech error:", e);
+  };
+
+  window.speechSynthesis.speak(u);
 }
 
 /* --- Update Card --- */
@@ -315,7 +370,7 @@ function loadCard(){
 
 /* --- Events --- */
 jpWordFront.onclick = (e)=>{
-  e.stopPropagation();
+  e.stopPropagation(); // 阻止卡片翻轉
   speak(vocab[idx].jp);
 };
 
@@ -329,20 +384,22 @@ audioSentenceAltBtn.onclick = e=>{
 };
 
 card.onclick = (e)=>{
-  if (e.target===favIcon) return;
+  // 如果點到星星，不做翻轉
+  if (e.target === favIcon) return;
+  
   card.classList.toggle("flipped");
   card.classList.toggle("card-expanded");
 };
 
 prevBtn.onclick = ()=>{
-  if(idx>0){
+  if(idx > 0){
     idx--;
     card.classList.remove("flipped","card-expanded");
     loadCard();
   }
 };
 nextBtn.onclick = ()=>{
-  if(idx<vocab.length-1){
+  if(idx < vocab.length - 1){
     idx++;
     card.classList.remove("flipped","card-expanded");
     loadCard();
