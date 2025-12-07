@@ -15,6 +15,7 @@
     justify-content: center;
     /* 避免 iOS 點擊高亮 */
     -webkit-tap-highlight-color: transparent;
+    min-height: 100vh;
   }
 
   .app {
@@ -24,6 +25,8 @@
     border-radius: 16px;
     box-shadow: 0 5px 16px rgba(0,0,0,0.1);
     padding: 20px;
+    display: flex;
+    flex-direction: column;
   }
 
   h1 { text-align: center; margin-bottom: 8px; }
@@ -33,7 +36,7 @@
     font-size: 12px; 
     color: #e74c3c; 
     margin-bottom: 10px; 
-    display: none; /* 預設隱藏，JS 偵測到 iOS 才顯示 */
+    display: none; 
   }
 
   /* 語速按鈕 */
@@ -57,16 +60,18 @@
     font-weight: 600;
   }
 
-  /* 卡片 */
+  /* 卡片容器 */
   .card {
     width: 100%;
     perspective: 1000px;
     cursor: pointer;
-    margin-bottom: 12px;
     position: relative;
-    transition: margin-bottom .3s ease;
+    /* 修改點：加入高度過渡動畫，移除固定的 margin-bottom */
+    transition: height 0.3s ease; 
+    margin-bottom: 20px; /* 與下方按鈕保持基本距離 */
   }
-  .card-expanded { margin-bottom: 180px; }
+
+  /* 移除原本的 .card-expanded margin 設定，改由 JS 控制高度 */
 
   .card-inner {
     width: 100%;
@@ -86,19 +91,25 @@
     background: #fafafa;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    top: 0;
+    left: 0;
   }
+  
   .card-front { 
     display: flex; 
     justify-content: center; 
     align-items: center; 
     flex-direction: column;
+    z-index: 2; /* 確保正面在未翻轉時在上方 */
   }
-  .card-back { transform: rotateY(180deg); }
+  .card-back { 
+    transform: rotateY(180deg); 
+    z-index: 1;
+  }
 
   .jp-word-front {
     font-size: 48px;
     margin-bottom: 6px;
-    /* 增加點擊區域提示 */
     border-bottom: 2px dashed #ddd; 
   }
   .front-hint {
@@ -114,7 +125,7 @@
     font-size: 26px;
     cursor: pointer;
     z-index: 10;
-    padding: 10px; /* 增加手指觸控範圍 */
+    padding: 10px;
   }
 
   /* table */
@@ -125,14 +136,20 @@
   }
   th {
     text-align: left;
-    width: 90px;
+    width: 85px; /*稍微縮小標題欄寬度以適應手機*/
     color: #888;
-    padding: 6px 4px;
+    padding: 8px 4px;
     vertical-align: top;
+    border-bottom: 1px solid #eee;
   }
   td {
     color: #222;
-    padding: 6px 4px;
+    padding: 8px 4px;
+    border-bottom: 1px solid #eee;
+    line-height: 1.5;
+  }
+  tr:last-child th, tr:last-child td {
+    border-bottom: none;
   }
 
   .audio-btn {
@@ -142,30 +159,38 @@
     cursor: pointer;
     margin-left: 6px;
     vertical-align: middle;
+    padding: 0;
   }
 
-  /* 按鈕 */
+  /* 按鈕區塊 */
   .controls {
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    gap: 15px;
+    /* 修改點：增加上方間距，避免貼著卡片 */
+    margin-top: 20px; 
+    padding-top: 10px;
+    border-top: 1px solid #f0f0f0;
   }
   button.nav {
     flex: 1;
-    padding: 12px 0;
+    padding: 14px 0;
     font-size: 16px;
-    border-radius: 999px;
+    border-radius: 12px;
     border: none;
-    background: #eee;
+    background: #f0f0f0;
+    color: #333;
+    font-weight: bold;
     cursor: pointer;
+    transition: background 0.2s;
   }
-  button.nav:active { background: #ddd; }
-  button.nav:disabled { opacity: 0.5; }
+  button.nav:active { background: #e0e0e0; transform: scale(0.98); }
+  button.nav:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .index {
     text-align: center;
-    margin-top: 10px;
-    color: #777;
+    margin-top: 15px;
+    color: #999;
     font-size: 14px;
   }
 </style>
@@ -176,17 +201,15 @@
 
 <h1>第一組詞彙（手機版）</h1>
 <div class="subtitle">點擊卡片反轉｜點字或🔊播放語音</div>
-<!-- 針對 iPhone 用戶的提示 -->
 <div class="ios-hint" id="iosHint">⚠️ iPhone 用戶請注意：請解除「靜音模式」(撥開側邊開關)，否則會沒有聲音。</div>
 
-<!-- 語速 -->
 <div class="speed-controls">
   <button class="speed-btn" data-rate="0.6">🐌 超慢</button>
   <button class="speed-btn" data-rate="0.8">🐢 慢</button>
   <button class="speed-btn active" data-rate="1.0">😀 普通</button>
 </div>
 
-<!-- 卡片 -->
+<!-- 卡片容器 -->
 <div class="card" id="card">
   <div class="fav-icon" id="favIcon">☆</div>
 
@@ -228,7 +251,7 @@
   </div>
 </div>
 
-<!-- Controls -->
+<!-- 按鈕區 -->
 <div class="controls">
   <button class="nav" id="prevBtn">上一個</button>
   <button class="nav" id="nextBtn">下一個</button>
@@ -313,8 +336,7 @@ if (isIOS()) {
   iosHint.style.display = "block";
 }
 
-/* --- Speech Function Fix --- */
-// 1. 預先載入語音列表 (Android/Chrome 需要)
+/* --- Speech Function --- */
 function loadVoices() {
   voices = window.speechSynthesis.getVoices();
 }
@@ -324,31 +346,38 @@ if (window.speechSynthesis.onvoiceschanged !== undefined) {
 }
 
 function speak(text){
-  // 2. 重要：手機端必須先 Cancel 掉前一個，否則隊列會卡死
   window.speechSynthesis.cancel();
-
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP"; // 設定語言
+  u.lang = "ja-JP";
   u.rate = speechRate;
-
-  // 3. 嘗試強制指定日文語音 (解決部分手機預設為英文的問題)
-  // 優先找 ja-JP，其次找任何包含 ja 的語音
   if (voices.length > 0) {
     const jaVoice = voices.find(v => v.lang === 'ja-JP') || voices.find(v => v.lang.includes('ja'));
-    if (jaVoice) {
-      u.voice = jaVoice;
-    }
+    if (jaVoice) u.voice = jaVoice;
   }
-
-  // 4. 錯誤處理
-  u.onerror = (e) => {
-    console.error("Speech error:", e);
-  };
-
+  u.onerror = (e) => console.error("Speech error:", e);
   window.speechSynthesis.speak(u);
 }
 
-/* --- Update Card --- */
+/* --- 修改點：動態更新卡片高度 --- */
+function updateCardHeight() {
+  // 取得正面與背面的DOM元素
+  const front = document.querySelector('.card-front');
+  const back = document.querySelector('.card-back');
+  
+  // 判斷目前是否翻轉
+  const isFlipped = card.classList.contains('flipped');
+  
+  // 取得目標面的高度 (offsetHeight)
+  let targetHeight = isFlipped ? back.offsetHeight : front.offsetHeight;
+  
+  // 設置卡片容器的高度 (這樣按鈕就會自動被推下去)
+  // 若取得的高度為0(可能因為載入延遲)，給一個預設值 240
+  if(targetHeight < 240) targetHeight = 240;
+  
+  card.style.height = targetHeight + 'px';
+}
+
+/* --- Update Card Content --- */
 function loadCard(){
   const v = vocab[idx];
   jpWordFront.textContent = v.jp;
@@ -366,11 +395,15 @@ function loadCard(){
   nextBtn.disabled = idx === vocab.length - 1;
 
   favIcon.textContent = hardSet.has(v.jp) ? "★" : "☆";
+  
+  // 每次載入新卡片，更新高度
+  // 使用 setTimeout 確保內容渲染完畢後再計算高度
+  setTimeout(updateCardHeight, 50);
 }
 
 /* --- Events --- */
 jpWordFront.onclick = (e)=>{
-  e.stopPropagation(); // 阻止卡片翻轉
+  e.stopPropagation();
   speak(vocab[idx].jp);
 };
 
@@ -384,29 +417,31 @@ audioSentenceAltBtn.onclick = e=>{
 };
 
 card.onclick = (e)=>{
-  // 如果點到星星，不做翻轉
   if (e.target === favIcon) return;
   
   card.classList.toggle("flipped");
-  card.classList.toggle("card-expanded");
+  // 移除 card-expanded 類別，因為我們改用 height 控制
+  // card.classList.toggle("card-expanded"); 
+  
+  // 翻轉時更新高度
+  updateCardHeight();
 };
 
 prevBtn.onclick = ()=>{
   if(idx > 0){
     idx--;
-    card.classList.remove("flipped","card-expanded");
+    card.classList.remove("flipped");
     loadCard();
   }
 };
 nextBtn.onclick = ()=>{
   if(idx < vocab.length - 1){
     idx++;
-    card.classList.remove("flipped","card-expanded");
+    card.classList.remove("flipped");
     loadCard();
   }
 };
 
-/* 語速按鈕 */
 document.querySelectorAll(".speed-btn").forEach(btn=>{
   btn.onclick = ()=>{
     document.querySelectorAll(".speed-btn").forEach(b=>b.classList.remove("active"));
@@ -415,7 +450,6 @@ document.querySelectorAll(".speed-btn").forEach(btn=>{
   };
 });
 
-/* 收藏星星 */
 favIcon.onclick = e=>{
   e.stopPropagation();
   const word = vocab[idx].jp;
@@ -425,6 +459,9 @@ favIcon.onclick = e=>{
 
 /* Init */
 loadCard();
+
+// 監聽視窗改變大小，確保高度正確
+window.addEventListener('resize', updateCardHeight);
 </script>
 
 </body>
