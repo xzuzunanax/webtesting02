@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>第一組詞彙單字卡（翻轉＋發音＋收藏＋語速）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text"; }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      padding: 20px;
+    }
+
+    h1 { text-align: center; margin: 0 0 10px; }
+    .subtitle { text-align: center; font-size: 12px; color: #777; margin-bottom: 10px; }
+
+    /* 語音速度按鈕列 */
+    .speed-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .speed-label {
+      margin-right: 4px;
+    }
+
+    .speed-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      background: #f0f0f0;
+      color: #444;
+    }
+
+    .speed-btn.active {
+      background: #ffd86b;
+      color: #6b4300;
+      font-weight: 600;
+    }
+
+    /* 卡片翻轉效果 */
+    .card {
+      width: 100%;
+      perspective: 1000px;
+      cursor: pointer;
+      margin-bottom: 12px;
+      position: relative;
+      transition: margin-bottom .3s ease;
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      z-index: 1;
+    }
+    .card.flipped .card-inner { transform: rotateY(180deg); }
+
+    /* 反轉時拉開空間，避免遮住按鈕 */
+    .card-expanded {
+      margin-bottom: 180px; /* 可按需要調整高度 */
+    }
+
+    .card-face {
+      position: relative;
+      width: 100%;
+      min-height: 220px;
+      padding: 18px;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      background: #fafafa;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    .card-front {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .jp-word-front {
+      font-size: 40px;
+      margin-bottom: 6px;
+    }
+
+    .front-hint {
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+    }
+
+    .card-back {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: rotateY(180deg);
+    }
+
+    /* Table 排版 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    th {
+      text-align: left;
+      width: 96px;
+      padding: 6px 4px;
+      color: #888;
+      font-weight: 600;
+      vertical-align: top;
+    }
+
+    td {
+      padding: 6px 4px;
+      color: #222;
+    }
+
+    /* 例句發音按鈕（只有 emoji） */
+    .audio-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 6px;
+    }
+
+    /* 右上角收藏⭐ */
+    .fav-icon {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 22px;
+      cursor: pointer;
+      user-select: none;
+      z-index: 5;
+    }
+
+    /* 控制區 */
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    button.nav {
+      flex: 1;
+      padding: 10px 0;
+      background: #eee;
+      border: none;
+      border-radius: 999px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button.nav:disabled { opacity: .4; }
+
+    .index {
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+      margin-top: 6px;
+    }
+
+    .hard-count {
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+      margin-top: 2px;
+    }
+
+    /* 查看收藏難字按鈕 */
+    .hard-link-wrapper {
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .hard-link-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: none;
+      background: #ffe8a3;
+      color: #7a4b00;
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <h1>第一組詞彙單字卡</h1>
+  <div class="subtitle">點擊卡片反轉｜翻頁自動讀出日文｜右上角⭐收藏難字</div>
+
+  <!-- 語速控制 -->
+  <div class="speed-controls">
+    <span class="speed-label">語音速度：</span>
+    <button class="speed-btn" data-rate="0.6">🐌 超慢</button>
+    <button class="speed-btn" data-rate="0.8">🐢 慢</button>
+    <button class="speed-btn active" data-rate="1.0">😀 普通</button>
+  </div>
+
+  <!-- 卡片 -->
+  <div class="card" id="card">
+    <!-- 右上角收藏⭐ -->
+    <div class="fav-icon" id="favIcon">☆</div>
+
+    <div class="card-inner">
+      <!-- 正面 -->
+      <div class="card-face card-front">
+        <div class="jp-word-front" id="jpWordFront"></div>
+        <div class="front-hint">👉 點擊卡片查看詳細內容</div>
+      </div>
+
+      <!-- 背面（table） -->
+      <div class="card-face card-back">
+        <table>
+          <tr><th>詞性</th><td id="posBack"></td></tr>
+          <tr><th>羅馬音</th><td id="romajiBack"></td></tr>
+          <tr><th>中文</th><td id="cnBack"></td></tr>
+
+          <!-- 漢字＋假名例句 -->
+          <tr>
+            <th>漢字假名例句</th>
+            <td>
+              <span id="exampleJpAlt"></span>
+              <button class="audio-btn" id="audioSentenceAltBtn">📢</button>
+            </td>
+          </tr>
+
+          <!-- 假名例句 -->
+          <tr>
+            <th>日文例句</th>
+            <td>
+              <span id="exampleJpBack"></span>
+              <button class="audio-btn" id="audioSentenceBtn">📢</button>
+            </td>
+          </tr>
+
+          <tr><th>中文例句</th><td id="exampleCnBack"></td></tr>
+          <tr><th>語法</th><td id="grammarBack"></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 上一個／下一個 -->
+  <div class="controls">
+    <button class="nav" id="prevBtn">上一個</button>
+    <button class="nav" id="nextBtn">下一個</button>
+  </div>
+
+  <div class="index" id="indexInfo"></div>
+  <div class="hard-count" id="hardCount"></div>
+
+  <!-- 查看收藏難字 -->
+  <div class="hard-link-wrapper">
+    <a class="hard-link-btn" id="hardLink" href="vocab-set1-hard-list.html" target="_blank">
+      查看收藏難字列表
+    </a>
+  </div>
+</div>
+
+<script>
+  const vocab = [
+    {
+      jp:"わたし",
+      romaji:"watashi",
+      pos:"名詞｜代名詞",
+      cn:"我",
+      exampleJp:"わたしは りんごが すきです。",
+      exampleJpAlt:"私はリンゴが好きです。",
+      exampleCn:"我喜歡蘋果。",
+      grammar:"常配「は」當主題。"
+    },
+    {
+      jp:"あなた",
+      romaji:"anata",
+      pos:"代名詞",
+      cn:"你",
+      exampleJp:"あなたは どこから きましたか。",
+      exampleJpAlt:"あなたはどこから来ましたか。",
+      exampleCn:"你從哪裡來？",
+      grammar:"實際對話少直接講「你」。"
+    },
+    {
+      jp:"あのひと",
+      romaji:"ano hito",
+      pos:"名詞",
+      cn:"那個人",
+      exampleJp:"あのひとは かいしゃいんです。",
+      exampleJpAlt:"あの人は会社員です。",
+      exampleCn:"那個人是公司職員。",
+      grammar:"禮貌語：あのかた。"
+    },
+    {
+      jp:"かれ",
+      romaji:"kare",
+      pos:"代名詞",
+      cn:"他",
+      exampleJp:"かれは がくせいです。",
+      exampleJpAlt:"彼は学生です。",
+      exampleCn:"他是學生。",
+      grammar:"有時可指「男朋友」。"
+    },
+    {
+      jp:"かのじょ",
+      romaji:"kanojo",
+      pos:"代名詞",
+      cn:"她",
+      exampleJp:"かのじょは にほんじんです。",
+      exampleJpAlt:"彼女は日本人です。",
+      exampleCn:"她是日本人。",
+      grammar:"亦可指「女朋友」。"
+    },
+    {
+      jp:"がくせい",
+      romaji:"gakusei",
+      pos:"名詞",
+      cn:"學生",
+      exampleJp:"わたしは がくせいです。",
+      exampleJpAlt:"私は学生です。",
+      exampleCn:"我是學生。",
+      grammar:"N5 基本詞。"
+    },
+    {
+      jp:"こうこうせい",
+      romaji:"koukousei",
+      pos:"名詞",
+      cn:"高中生",
+      exampleJp:"いもうとは こうこうせいです。",
+      exampleJpAlt:"妹は高校生です。",
+      exampleCn:"妹妹是高中生。",
+      grammar:"高校＝高中。"
+    },
+    {
+      jp:"かいしゃいん",
+      romaji:"kaishain",
+      pos:"名詞",
+      cn:"公司職員",
+      exampleJp:"ちちは かいしゃいんです。",
+      exampleJpAlt:"父は会社員です。",
+      exampleCn:"爸爸是公司職員。",
+      grammar:"泛指上班族。"
+    },
+    {
+      jp:"しゃいん",
+      romaji:"shain",
+      pos:"名詞",
+      cn:"職員",
+      exampleJp:"ＩＴの しゃいんです。",
+      exampleJpAlt:"ITの社員です。",
+      exampleCn:"我是 IT 公司的職員。",
+      grammar:"通常跟公司名。"
+    },
+    {
+      jp:"どうりょう",
+      romaji:"douryou",
+      pos:"名詞",
+      cn:"同事",
+      exampleJp:"どうりょうと ひるごはんを たべます。",
+      exampleJpAlt:"同僚と昼ご飯を食べます。",
+      exampleCn:"和同事吃午餐。",
+      grammar:"同部門同事。"
+    },
+    {
+      jp:"しゅふ",
+      romaji:"shufu",
+      pos:"名詞",
+      cn:"家庭主婦",
+      exampleJp:"ははは しゅふです。",
+      exampleJpAlt:"母は主婦です。",
+      exampleCn:"媽媽是家庭主婦。",
+      grammar:"亦可指男性主夫。"
+    },
+    {
+      jp:"おくに",
+      romaji:"okuni",
+      pos:"名詞（敬語）",
+      cn:"您的國家",
+      exampleJp:"おくには どちらですか。",
+      exampleJpAlt:"お国はどちらですか。",
+      exampleCn:"請問您是哪一國人？",
+      grammar:"お + 國名 → 尊敬。"
+    },
+    {
+      jp:"にほんじん",
+      romaji:"nihonjin",
+      pos:"名詞",
+      cn:"日本人",
+      exampleJp:"かれは にほんじんです。",
+      exampleJpAlt:"彼は日本人です。",
+      exampleCn:"他是日本人。",
+      grammar:"國家名＋じん。"
+    },
+    {
+      jp:"アメリカじん",
+      romaji:"amerikajin",
+      pos:"名詞",
+      cn:"美國人",
+      exampleJp:"かのじょは アメリカじんです。",
+      exampleJpAlt:"彼女はアメリカ人です。",
+      exampleCn:"她是美國人。",
+      grammar:"外來語國名＋じん。"
+    },
+    {
+      jp:"たいわん",
+      romaji:"taiwan",
+      pos:"名詞",
+      cn:"台灣",
+      exampleJp:"わたしは たいわんから きました。",
+      exampleJpAlt:"私は台湾から来ました。",
+      exampleCn:"我來自台灣。",
+      grammar:"常用於自我介紹。"
+    }
+  ];
+
+  const STORAGE_KEY = "vocabSet1_hardWords";
+
+  const card              = document.getElementById("card");
+  const favIcon           = document.getElementById("favIcon");
+  const jpWordFront       = document.getElementById("jpWordFront");
+  const posBack           = document.getElementById("posBack");
+  const romajiBack        = document.getElementById("romajiBack");
+  const cnBack            = document.getElementById("cnBack");
+  const exampleJpBack     = document.getElementById("exampleJpBack");
+  const exampleJpAlt      = document.getElementById("exampleJpAlt");
+  const exampleCnBack     = document.getElementById("exampleCnBack");
+  const grammarBack       = document.getElementById("grammarBack");
+  const audioSentenceBtn  = document.getElementById("audioSentenceBtn");
+  const audioSentenceAltBtn = document.getElementById("audioSentenceAltBtn");
+
+  const prevBtn   = document.getElementById("prevBtn");
+  const nextBtn   = document.getElementById("nextBtn");
+  const indexInfo = document.getElementById("indexInfo");
+  const hardCountEl = document.getElementById("hardCount");
+  const hardLink  = document.getElementById("hardLink");
+
+  const speedBtns = document.querySelectorAll(".speed-btn");
+  let speechRate = 1.0;
+
+  let idx = 0;
+  let hardSet = new Set();
+
+  function loadHardFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        hardSet = new Set(JSON.parse(raw));
+      }
+    } catch(e) {
+      hardSet = new Set();
+    }
+  }
+
+  function saveHardToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(hardSet)));
+    } catch(e) {}
+  }
+
+  // 更新「查看收藏難字列表」的 URL 參數
+  function updateHardLinkHref() {
+    const arr = Array.from(hardSet);
+    const query = encodeURIComponent(JSON.stringify(arr));
+    hardLink.href = "vocab-set1-hard-list.html?words=" + query;
+  }
+
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ja-JP";
+    u.rate = speechRate;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }
+
+  function updateFavIcon() {
+    const w = vocab[idx].jp;
+    const isHard = hardSet.has(w);
+    favIcon.textContent = isHard ? "★" : "☆";
+    hardCountEl.textContent = `已收藏難字：${hardSet.size} 個`;
+    updateHardLinkHref();
+  }
+
+  function loadCard(autoSpeak = true) {
+    const v = vocab[idx];
+
+    jpWordFront.textContent   = v.jp;
+    posBack.textContent       = v.pos;
+    romajiBack.textContent    = v.romaji;
+    cnBack.textContent        = v.cn;
+    exampleJpAlt.textContent  = v.exampleJpAlt;
+    exampleJpBack.textContent = v.exampleJp;
+    exampleCnBack.textContent = v.exampleCn;
+    grammarBack.textContent   = v.grammar;
+
+    indexInfo.textContent = `第 ${idx + 1} / ${vocab.length} 個`;
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === vocab.length - 1;
+
+    updateFavIcon();
+    if (autoSpeak) speak(v.jp);
+  }
+
+  // 語速按鈕事件
+  const speedButtons = document.querySelectorAll(".speed-btn");
+  speedButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      speedButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      speechRate = parseFloat(btn.dataset.rate || "1.0");
+      speak(vocab[idx].jp);
+    });
+  });
+
+  // 點卡片：反轉（但按鈕/星星唔反），並控制高度
+  card.addEventListener("click", (e) => {
+    if (
+      e.target === favIcon ||
+      e.target === audioSentenceBtn ||
+      e.target === audioSentenceAltBtn
+    ) return;
+
+    card.classList.toggle("flipped");
+    card.classList.toggle("card-expanded");
+  });
+
+  prevBtn.onclick = () => {
+    if (idx > 0) {
+      idx--;
+      card.classList.remove("flipped", "card-expanded");
+      loadCard(true);
+    }
+  };
+
+  nextBtn.onclick = () => {
+    if (idx < vocab.length - 1) {
+      idx++;
+      card.classList.remove("flipped", "card-expanded");
+      loadCard(true);
+    }
+  };
+
+  audioSentenceBtn.onclick = (e) => {
+    e.stopPropagation();
+    speak(vocab[idx].exampleJp);
+  };
+
+  audioSentenceAltBtn.onclick = (e) => {
+    e.stopPropagation();
+    speak(vocab[idx].exampleJpAlt);
+  };
+
+  // 點右上角⭐收藏 / 取消收藏
+  favIcon.onclick = (e) => {
+    e.stopPropagation();
+    const w = vocab[idx].jp;
+    if (hardSet.has(w)) hardSet.delete(w);
+    else hardSet.add(w);
+    saveHardToStorage();
+    updateFavIcon();
+  };
+
+  loadHardFromStorage();
+  loadCard(true);
+</script>
+
+</body>
+</html>
