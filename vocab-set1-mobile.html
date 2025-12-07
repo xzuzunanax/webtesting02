@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>第一組詞彙（手機版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text"; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 5px 16px rgba(0,0,0,0.1);
+    padding: 20px;
+  }
+
+  h1 { text-align: center; margin-bottom: 8px; }
+  .subtitle { text-align: center; font-size: 13px; color: #666; margin-bottom: 12px; }
+
+  /* 語速按鈕（手機大尺寸） */
+  .speed-controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  .speed-btn {
+    padding: 6px 14px;
+    font-size: 14px;
+    border-radius: 20px;
+    border: none;
+    background: #eee;
+    cursor: pointer;
+  }
+  .speed-btn.active {
+    background: #ffd86b;
+    color: #543a00;
+    font-weight: 600;
+  }
+
+  /* 卡片 */
+  .card {
+    width: 100%;
+    perspective: 1000px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    position: relative;
+    transition: margin-bottom .3s ease;
+  }
+  .card-expanded { margin-bottom: 180px; }
+
+  .card-inner {
+    width: 100%;
+    position: relative;
+    transition: transform .6s;
+    transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    width: 100%;
+    min-height: 240px;
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid #ddd;
+    background: #fafafa;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .card-front { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-direction: column;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .jp-word-front {
+    font-size: 48px;
+    margin-bottom: 6px;
+  }
+  .front-hint {
+    font-size: 13px;
+    color: #777;
+  }
+
+  /* 收藏星星 */
+  .fav-icon {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 26px;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  /* table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  th {
+    text-align: left;
+    width: 110px;
+    color: #888;
+    padding: 6px 4px;
+  }
+  td {
+    color: #222;
+    padding: 6px 4px;
+  }
+
+  /* 大一點的🔊 */
+  .audio-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    margin-left: 6px;
+  }
+
+  /* 按鈕 */
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  button.nav {
+    flex: 1;
+    padding: 12px 0;
+    font-size: 16px;
+    border-radius: 999px;
+    border: none;
+    background: #eee;
+  }
+
+  .index {
+    text-align: center;
+    margin-top: 10px;
+    color: #777;
+    font-size: 14px;
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<h1>第一組詞彙（手機版）</h1>
+<div class="subtitle">點擊卡片反轉｜點字或🔊播放語音｜手機專用</div>
+
+<!-- 語速 -->
+<div class="speed-controls">
+  <button class="speed-btn" data-rate="0.6">🐌 超慢</button>
+  <button class="speed-btn" data-rate="0.8">🐢 慢</button>
+  <button class="speed-btn active" data-rate="1.0">😀 普通</button>
+</div>
+
+<!-- 卡片 -->
+<div class="card" id="card">
+  <div class="fav-icon" id="favIcon">☆</div>
+
+  <div class="card-inner">
+
+    <!-- 正面 -->
+    <div class="card-face card-front">
+      <div class="jp-word-front" id="jpWordFront"></div>
+      <div class="front-hint">（點我播放讀音）</div>
+    </div>
+
+    <!-- 背面 -->
+    <div class="card-face card-back">
+      <table>
+        <tr><th>詞性</th><td id="posBack"></td></tr>
+        <tr><th>羅馬音</th><td id="romajiBack"></td></tr>
+        <tr><th>中文</th><td id="cnBack"></td></tr>
+
+        <tr>
+          <th>漢字假名例句</th>
+          <td>
+            <span id="exampleJpAlt"></span>
+            <button class="audio-btn" id="audioSentenceAltBtn">🔊</button>
+          </td>
+        </tr>
+
+        <tr>
+          <th>日文例句</th>
+          <td>
+            <span id="exampleJpBack"></span>
+            <button class="audio-btn" id="audioSentenceBtn">🔊</button>
+          </td>
+        </tr>
+
+        <tr><th>中文例句</th><td id="exampleCnBack"></td></tr>
+        <tr><th>語法</th><td id="grammarBack"></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <button class="nav" id="prevBtn">上一個</button>
+  <button class="nav" id="nextBtn">下一個</button>
+</div>
+<div class="index" id="indexInfo"></div>
+
+<script>
+/* --- Vocab Data --- */
+const vocab = [
+  {
+    jp:"わたし",
+    romaji:"watashi",
+    pos:"名詞｜代名詞",
+    cn:"我",
+    exampleJp:"わたしは りんごが すきです。",
+    exampleJpAlt:"私はリンゴが好きです。",
+    exampleCn:"我喜歡蘋果。",
+    grammar:"常配「は」當主題。"
+  },
+  {
+    jp:"あなた",
+    romaji:"anata",
+    pos:"代名詞",
+    cn:"你",
+    exampleJp:"あなたは どこから きましたか。",
+    exampleJpAlt:"あなたはどこから来ましたか。",
+    exampleCn:"你從哪裡來？",
+    grammar:"實際對話少直接講「你」。"
+  },
+  {
+    jp:"あのひと",
+    romaji:"ano hito",
+    pos:"名詞",
+    cn:"那個人",
+    exampleJp:"あのひとは かいしゃいんです。",
+    exampleJpAlt:"あの人は会社員です。",
+    exampleCn:"那個人是公司職員。",
+    grammar:"禮貌語：あのかた。"
+  },
+  {
+    jp:"かれ",
+    romaji:"kare",
+    pos:"代名詞",
+    cn:"他",
+    exampleJp:"かれは がくせいです。",
+    exampleJpAlt:"彼は学生です。",
+    exampleCn:"他是學生。",
+    grammar:"有時可指「男朋友」。"
+  }
+];
+
+/* --- DOM --- */
+const card = document.getElementById("card");
+const favIcon = document.getElementById("favIcon");
+const jpWordFront = document.getElementById("jpWordFront");
+const posBack = document.getElementById("posBack");
+const romajiBack = document.getElementById("romajiBack");
+const cnBack = document.getElementById("cnBack");
+const exampleJpBack = document.getElementById("exampleJpBack");
+const exampleJpAlt = document.getElementById("exampleJpAlt");
+const exampleCnBack = document.getElementById("exampleCnBack");
+const grammarBack = document.getElementById("grammarBack");
+
+const audioSentenceBtn = document.getElementById("audioSentenceBtn");
+const audioSentenceAltBtn = document.getElementById("audioSentenceAltBtn");
+
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const indexInfo = document.getElementById("indexInfo");
+
+let idx = 0;
+let speechRate = 1.0;
+let hardSet = new Set();
+
+/* --- Speech Function --- */
+function speak(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP";
+  u.rate = speechRate;
+  speechSynthesis.speak(u);
+}
+
+/* --- Update Card --- */
+function loadCard(){
+  const v = vocab[idx];
+  jpWordFront.textContent = v.jp;
+  posBack.textContent = v.pos;
+  romajiBack.textContent = v.romaji;
+  cnBack.textContent = v.cn;
+  exampleJpAlt.textContent = v.exampleJpAlt;
+  exampleJpBack.textContent = v.exampleJp;
+  exampleCnBack.textContent = v.exampleCn;
+  grammarBack.textContent = v.grammar;
+
+  indexInfo.textContent = `第 ${idx+1} / ${vocab.length} 個`;
+
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === vocab.length - 1;
+
+  favIcon.textContent = hardSet.has(v.jp) ? "★" : "☆";
+}
+
+/* --- Events --- */
+jpWordFront.onclick = (e)=>{
+  e.stopPropagation();
+  speak(vocab[idx].jp);
+};
+
+audioSentenceBtn.onclick = e=>{
+  e.stopPropagation();
+  speak(vocab[idx].exampleJp);
+};
+audioSentenceAltBtn.onclick = e=>{
+  e.stopPropagation();
+  speak(vocab[idx].exampleJpAlt);
+};
+
+card.onclick = (e)=>{
+  if (e.target===favIcon) return;
+  card.classList.toggle("flipped");
+  card.classList.toggle("card-expanded");
+};
+
+prevBtn.onclick = ()=>{
+  if(idx>0){
+    idx--;
+    card.classList.remove("flipped","card-expanded");
+    loadCard();
+  }
+};
+nextBtn.onclick = ()=>{
+  if(idx<vocab.length-1){
+    idx++;
+    card.classList.remove("flipped","card-expanded");
+    loadCard();
+  }
+};
+
+/* 語速按鈕 */
+document.querySelectorAll(".speed-btn").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll(".speed-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    speechRate = Number(btn.dataset.rate);
+  };
+});
+
+/* 收藏星星 */
+favIcon.onclick = e=>{
+  e.stopPropagation();
+  const word = vocab[idx].jp;
+  hardSet.has(word) ? hardSet.delete(word) : hardSet.add(word);
+  favIcon.textContent = hardSet.has(word) ? "★" : "☆";
+};
+
+/* Init */
+loadCard();
+</script>
+
+</body>
+</html>
